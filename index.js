@@ -1,45 +1,104 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const { connectDB } = require('./config/mongodb');
+const cors = require('cors');
+
+const { connectDB } = require('./config/DatabaseConnection');
+const usersRoute = require('./routes/UserRoutes');
 
 dotenv.config();
 
 const app = express();
 
+/*
+|--------------------------------------------------------------------------
+| Middlewares
+|--------------------------------------------------------------------------
+*/
+
+// Body parser
 app.use(express.json());
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
+// CORS (production standard)
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+
+/*
+|--------------------------------------------------------------------------
+| Routes
+|--------------------------------------------------------------------------
+*/
+
+// Health check route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Study Tracker API is running'
+  });
 });
 
-const PORT = process.env.PORT;
+// User routes
+app.use('/api/users', usersRoute);
+
+
+/*
+|--------------------------------------------------------------------------
+| 404 Handler
+|--------------------------------------------------------------------------
+*/
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found"
+  });
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Global Error Handler
+|--------------------------------------------------------------------------
+*/
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error"
+  });
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Server Initialization
+|--------------------------------------------------------------------------
+*/
+
+const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
-    await connectDB(); 
-    console.log("Server is running on port ", PORT);
+
+    await connectDB();
+
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
     });
-  } catch (err) {
-    console.error("Server startup failed:", err.message);
+
+  } catch (error) {
+
+    console.error("❌ Server startup failed:", error.message);
     process.exit(1);
+
   }
 };
 
 startServer();
-
-const usersRoute = require('./routes/users_route');
-app.use('/users', usersRoute);
-
-app.get('/', (req, res) => {
-  res.json({ message: 'Study Tracker API is running' });
-});
 
 module.exports = app;
