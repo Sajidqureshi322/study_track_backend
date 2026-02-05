@@ -1,13 +1,12 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const { connectDB, checkMongoDbConnection } = require('./config/mongodb');
+const { connectDB } = require('./config/mongodb');
 
 dotenv.config();
 
 const app = express();
 
 app.use(express.json());
-// app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -21,14 +20,26 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT;
 
-connectDB();
-checkMongoDbConnection();
+const startServer = async () => {
+  try {
+    await connectDB(); 
+    console.log("Server is running on port ", PORT);
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("Server startup failed:", err.message);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+const usersRoute = require('./routes/users_route');
+app.use('/users', usersRoute);
+
 app.get('/', (req, res) => {
   res.json({ message: 'Study Tracker API is running' });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
 });
 
 module.exports = app;
